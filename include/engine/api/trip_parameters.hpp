@@ -56,14 +56,13 @@ struct TripParameters : public RouteParameters
     {
     }
 
-    boost::optional<std::size_t> source;
-    boost::optional<std::size_t> destination;
+    std::size_t source = 0;
+    std::size_t destination = 0;
 
     bool IsValid() const
     {
-        return ((!source && !destination) ||
-                (source && *source < coordinates.size() && *destination < coordinates.size())) &&
-               RouteParameters::IsValid();
+        return (source < coordinates.size() && destination < coordinates.size() &&
+                RouteParameters::IsValid());
     }
 };
 }

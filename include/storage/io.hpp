@@ -43,6 +43,7 @@ class FileReader
         VerifyFingerprint,
         HasNoFingerprint
     };
+
     FileReader(const std::string &filename, const FingerprintFlag flag)
         : FileReader(boost::filesystem::path(filename), flag)
     {
@@ -194,10 +195,6 @@ class FileReader
 
 class FileWriter
 {
-  private:
-    const boost::filesystem::path filepath;
-    boost::filesystem::ofstream output_stream;
-
   public:
     enum FingerprintFlag
     {
@@ -211,7 +208,7 @@ class FileWriter
     }
 
     FileWriter(const boost::filesystem::path &filepath_, const FingerprintFlag flag)
-        : filepath(filepath_)
+        : filepath(filepath_), fingerprint(flag)
     {
         output_stream.open(filepath, std::ios::binary);
         if (!output_stream)
@@ -262,9 +259,30 @@ class FileWriter
         const auto fingerprint = util::FingerPrint::GetValid();
         return WriteOne(fingerprint);
     }
+
+    template <typename T> void Skip(const std::size_t element_count)
+    {
+        boost::iostreams::seek(output_stream, element_count * sizeof(T), BOOST_IOS::cur);
+    }
+
+    void SkipToBeginning()
+    {
+        boost::iostreams::seek(output_stream, 0, std::ios::beg);
+
+        // If we wrote a Fingerprint, skip over it
+        if (fingerprint == FingerprintFlag::GenerateFingerprint)
+            Skip<util::FingerPrint>(1);
+
+        // Should probably return a functor for jumping back to the current pos.
+    }
+
+  private:
+    const boost::filesystem::path filepath;
+    boost::filesystem::ofstream output_stream;
+    FingerprintFlag fingerprint;
 };
-}
-}
-}
+} // ns io
+} // ns storage
+} // ns osrm
 
 #endif

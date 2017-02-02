@@ -9,6 +9,7 @@
 
 #include <iterator>
 #include <tuple>
+#include <unordered_map>
 #include <vector>
 
 #include <boost/assert.hpp>
@@ -39,6 +40,8 @@ struct CompressedNodeBasedGraph
         // - uint64: number of nodes and therefore also coordinates
         // - (uint32_t, uint32_t): num_edges * edges
         // - (int32_t, int32_t: num_nodes * coordinates (lon, lat)
+        //
+        // Gets written in Extractor::WriteCompressedNodeBasedGraph
 
         const auto num_edges = reader.ReadElementCount64();
         const auto num_nodes = reader.ReadElementCount64();
@@ -57,11 +60,72 @@ struct CompressedNodeBasedGraph
 CompressedNodeBasedGraph LoadCompressedNodeBasedGraph(const std::string &path)
 {
     const auto fingerprint = storage::io::FileReader::VerifyFingerprint;
-
     storage::io::FileReader reader(path, fingerprint);
 
     CompressedNodeBasedGraph graph{reader};
     return graph;
+}
+
+struct NodeBasedGraphToEdgeBasedGraphMapping
+{
+    NodeBasedGraphToEdgeBasedGraphMapping(storage::io::FileReader &reader)
+    {
+        // Reads:  | Fingerprint | #mappings | u v head tail | u v head tail | ..
+        // - uint64: number of mappings (u, v, head, tail) chunks
+        // - NodeID u, NodeID v, EdgeID head, EdgeID tail
+        //
+        // Gets written in NodeBasedGraphToEdgeBasedGraphMappingWriter
+
+        const auto num_mappings = reader.ReadElementCount64();
+
+        heads.reserve(num_mappings);
+        tails.reserve(num_mappings);
+
+        for (std::uint64_t i{0}; i < num_mappings; ++i)
+        {
+
+            const auto u = reader.ReadOne<NodeID>();    // node based graph `from` nodes
+            const auto v = reader.ReadOne<NodeID>();    // node based graph `to` nodes
+            const auto head = reader.ReadOne<EdgeID>(); // edge based graph forward nodes
+            const auto tail = reader.ReadOne<EdgeID>(); // edge based graph backward nodes
+
+            heads.insert({head, {u, v}});
+            tails.insert({tail, {u, v}});
+        }
+    }
+
+    struct NodeBasedNodes
+    {
+        NodeID u, v;
+    };
+
+    NodeBasedNodes Lookup(EdgeID edge_based_node)
+    {
+        auto heads_it = heads.find(edge_based_node);
+        if (heads_it != end(heads))
+            return heads_it->second;
+
+        auto tails_it = tails.find(edge_based_node);
+        if (tails_it != end(tails))
+            return tails_it->second;
+
+        BOOST_ASSERT(false);
+        return NodeBasedNodes{SPECIAL_NODEID, SPECIAL_NODEID};
+    }
+
+  private:
+    std::unordered_map<EdgeID, NodeBasedNodes> heads;
+    std::unordered_map<EdgeID, NodeBasedNodes> tails;
+};
+
+NodeBasedGraphToEdgeBasedGraphMapping
+LoadNodeBasedGraphToEdgeBasedGraphMapping(const std::string &path)
+{
+    const auto fingerprint = storage::io::FileReader::VerifyFingerprint;
+    storage::io::FileReader reader(path, fingerprint);
+
+    NodeBasedGraphToEdgeBasedGraphMapping mapping{reader};
+    return mapping;
 }
 
 void LogGeojson(const std::string &filename, const std::vector<std::uint32_t> &bisection_ids)
@@ -155,6 +219,11 @@ int Partitioner::Run(const PartitionConfig &config)
 
     LogGeojson(config.compressed_node_based_graph_path.string(),
                recursive_bisection.BisectionIDs());
+
+    // TODO: fast head/tail keyed lookup for u,v
+    auto mapping = LoadNodeBasedGraphToEdgeBasedGraphMapping(config.nbg_ebg_mapping_path.string());
+
+    util::Log() << "Loaded node based graph to edge based graph mapping";
 
     return 0;
 }

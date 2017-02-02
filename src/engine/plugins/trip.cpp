@@ -188,7 +188,8 @@ Status TripPlugin::HandleRequest(const std::shared_ptr<const datafacade::BaseDat
     BOOST_ASSERT(phantom_node_pairs.size() == parameters.coordinates.size());
 
     bool roundtrip = true;
-    if (parameters.source && parameters.destination)
+    if (parameters.source && parameters.destination &&
+        *parameters.source != *parameters.destination)
     {
         roundtrip = false;
     }

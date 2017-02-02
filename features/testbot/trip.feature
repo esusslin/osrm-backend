@@ -76,6 +76,7 @@ Feature: Basic trip planning
  
          When I plan a trip I should get
             |  waypoints  | source | destination | trips  | durations         | distance |
+            |  a,b,c,d,e  | 4      | 4           | abcdea | 10.3              | 103      |
             |  a,b,c,d,e  | 0      | 2           | abedc  | 8.200000000000001 | 81.6     |
 
 
@@ -99,27 +100,10 @@ Feature: Basic trip planning
             | jk    |
 
         When I plan a trip I should get
-            |  waypoints              | source | destination | trips       | durations  | distance  |
-            |  a,b,c,d,e,f,g,h,i,j,k  | 0      | 10          | abcdefghijk | 10         | 99.9      |
-            |  a,b,c,d,e              | 0      | 4           | abcde       | 4          | 40        |
+            |  waypoints              | source | destination | trips        | durations  | distance  |
+            |  a,b,c,d,e,f,g,h,i,j,k  | 0      | 10          | abcdefghijk  | 10         | 99.9      |
+            |  a,b,c,d,e,f,g,h,i,j,k  | 4      | 4           | abcdefghijka | 20         | 199.9     |
 
-    # Test single node in each component #1850
-    Scenario: Testbot - Trip planning with less than 10 nodes
-        Given the node map
-            """
-            a 1 b
-
-            c 2 d
-            """
-
-        And the ways
-            | nodes |
-            | ab    |
-            | cd    |
-
-        When I plan a trip I should get
-            | waypoints | trips |
-            | 1,2       |       |
 
 
     Scenario: Testbot - Trip planning with multiple scc roundtrip
@@ -155,11 +139,11 @@ Feature: Basic trip planning
             | qm    |
 
         When I plan a trip I should get
-            | waypoints                       | trips               |
-            | a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p | defghijklabcd,mnopm |
+            | waypoints                       | trips               | distance   | durations |
+            | a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p | defghijklabcd,mnopm | 220.1,54.2 | 22,5.4    |
 
 
-    Scenario: Testbot - Trip planning with multiple scc tfse
+    Scenario: Testbot - Trip planning with fixed start and end points errors
         Given the node map
             """
             a b
@@ -173,10 +157,31 @@ Feature: Basic trip planning
             | dc    |
 
          When I plan a trip I should get
-            |  waypoints    | source  | destination | status       | message                                          |
-            |  a,b,c,d      | 0       | 3           | NoTrips      | There's no way to get from source to destination |
-            |  a,b,c,d      | -1      | 1           | InvalidQuery | Query string malformed close to position 123     |
-            |  a,b,c,d      | 1       | -1          | InvalidQuery | Query string malformed close to position 137     |
+            |  waypoints    | source  | destination | status         | message                                                          |
+            |  a,b,c,d      | 0       | 3           | NoTrips        | There's no way to get from source to destination                 |
+            |  a,b,c,d      | -1      | 1           | InvalidQuery   | Query string malformed close to position 123                     |
+            |  a,b,c,d      | 1       | -1          | InvalidQuery   | Query string malformed close to position 137                     |
+            |  a,b,c,d      | 10      | 1           | InvalidOptions | Source or destination index is larger than number of coordinates |
+            |  a,b,c,d      | 1       | 10          | InvalidOptions | Source or destination index is larger than number of coordinates |
+
+
+    # Test single node in each component #1850
+    Scenario: Testbot - Trip planning with less than 10 nodes
+        Given the node map
+            """
+            a 1 b
+
+            c 2 d
+            """
+
+        And the ways
+            | nodes |
+            | ab    |
+            | cd    |
+
+        When I plan a trip I should get
+            | waypoints | trips |
+            | 1,2       |       |
 
 
     Scenario: Testbot - Repeated Coordinate

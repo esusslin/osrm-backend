@@ -35,6 +35,13 @@ std::string getWrongOptionHelp(const engine::api::TripParameters &parameters)
         help = "Number of coordinates needs to be at least two.";
     }
 
+    // IsValid error messages
+
+    if (parameters.source >= coord_size || parameters.destination >= coord_size)
+    {
+        help = "Source or destination index is larger than number of coordinates";
+    }
+
     return help;
 }
 } // anon. ns

@@ -32,4 +32,13 @@ inline Locations get_locations_in_big_component()
             {Longitude{7.421315}, Latitude{43.738814}}};
 }
 
+
+inline Locations get_locations_for_tfse_small_component()
+{
+    return {{Longitude{7.438023}, Latitude{43.746465}},
+            {Longitude{7.439263}, Latitude{43.746543}},
+            {Longitude{7.438190}, Latitude{43.747560}},
+            {Longitude{7.438356}, Latitude{43.745565}}};
+}
+
 #endif

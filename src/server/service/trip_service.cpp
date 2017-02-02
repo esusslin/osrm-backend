@@ -36,7 +36,6 @@ std::string getWrongOptionHelp(const engine::api::TripParameters &parameters)
     }
 
     // IsValid error messages
-
     if (parameters.source >= coord_size || parameters.destination >= coord_size)
     {
         help = "Source or destination index is larger than number of coordinates";

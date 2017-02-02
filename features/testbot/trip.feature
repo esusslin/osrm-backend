@@ -139,8 +139,8 @@ Feature: Basic trip planning
             | qm    |
 
         When I plan a trip I should get
-            | waypoints                       | trips               | distance   | durations |
-            | a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p | defghijklabcd,mnopm | 220.1,54.2 | 22,5.4    |
+            | waypoints                       | trips               |
+            | a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p | defghijklabcd,mnopm |
 
 
     Scenario: Testbot - Trip planning with fixed start and end points errors
@@ -182,7 +182,6 @@ Feature: Basic trip planning
         When I plan a trip I should get
             | waypoints | trips |
             | 1,2       |       |
-
 
     Scenario: Testbot - Repeated Coordinate
         Given the node map

@@ -2,6 +2,7 @@
 #include "util/coordinate.hpp"
 #include "util/typedefs.hpp"
 
+#include <algorithm>
 #include <vector>
 
 #include <boost/test/test_case_template.hpp>
@@ -44,18 +45,29 @@ std::vector<EdgeWithSomeAdditionalData> makeGridEdges(int rows, int columns, int
         for (int c = 0; c < columns; ++c)
         {
             auto id = static_cast<NodeID>(get_id(r, c));
-            auto left = get_id(r, c - 1);
-            if (valid(left))
+            if (c > 0)
+            {
+                auto left = get_id(r, c - 1);
                 edges.push_back({id, static_cast<NodeID>(left), 1});
-            auto right = get_id(r, c + 1);
-            if (valid(right))
-                edges.push_back({id, static_cast<NodeID>(right), 1});
-            auto top = get_id(r - 1, c);
-            if (valid(top))
-                edges.push_back({id, static_cast<NodeID>(top), 1});
-            auto bottom = get_id(r + 1, c);
-            if (valid(bottom))
-                edges.push_back({id, static_cast<NodeID>(bottom), 1});
+            }
+            if (c + 1 < columns)
+            {
+                auto right = get_id(r, c + 1);
+                if (valid(right))
+                    edges.push_back({id, static_cast<NodeID>(right), 1});
+            }
+            if (r > 0)
+            {
+                auto top = get_id(r - 1, c);
+                if (valid(top))
+                    edges.push_back({id, static_cast<NodeID>(top), 1});
+            }
+            if (r + 1 < rows)
+            {
+                auto bottom = get_id(r + 1, c);
+                if (valid(bottom))
+                    edges.push_back({id, static_cast<NodeID>(bottom), 1});
+            }
         }
     }
 
@@ -76,7 +88,6 @@ BOOST_AUTO_TEST_CASE(access_nodes)
     auto graph = makeBisectionGraph(coordinates, adaptToBisectionEdge(std::move(grid_edges)));
 
     const auto to_row = [cols](const NodeID nid) { return nid / cols; };
-
     const auto to_col = [cols](const NodeID nid) { return nid % cols; };
 
     const auto get_expected = [&](const NodeID id) {
@@ -136,20 +147,62 @@ BOOST_AUTO_TEST_CASE(access_nodes)
 BOOST_AUTO_TEST_CASE(access_edges)
 {
     // 40 entries of left/right edges
-    const auto left_box = makeGridCoordinates(10, 4, 0.01, 0, 0);
-    const auto right_box = makeGridCoordinates(10, 4, 0.01, 10, 0);
-    std::vector<Coordinate> coordinates = left_box;
-    coordinates.insert(coordinates.end(), right_box.begin(), right_box.end());
+    double step_size = 0.01;
+    int rows = 10;
+    int cols = 4;
+    const auto coordinates = makeGridCoordinates(rows, cols, step_size, 0, 0);
 
-    const auto left_edges = makeGridEdges(10, 4, 0);
-    const auto right_edges = makeGridEdges(10, 4, 40);
-    std::vector<EdgeWithSomeAdditionalData> grid_edges = left_edges;
-    grid_edges.insert(grid_edges.end(), right_edges.begin(), right_edges.end());
+    auto grid_edges = makeGridEdges(10, 4, 0);
+
+    std::random_shuffle(grid_edges.begin(), grid_edges.end());
     groupEdgesBySource(grid_edges.begin(), grid_edges.end());
 
     const auto graph = makeBisectionGraph(coordinates, adaptToBisectionEdge(std::move(grid_edges)));
 
-    BOOST_CHECK_EQUAL(graph.NumberOfNodes(), 80);
+    const auto to_row = [cols](const NodeID nid) { return nid / cols; };
+    const auto to_col = [cols](const NodeID nid) { return nid % cols; };
+
+    BOOST_CHECK_EQUAL(graph.NumberOfNodes(), 40);
+    for (const auto &node : graph.Nodes())
+    {
+        for (const auto &edge : graph.Edges(node))
+        {
+            BOOST_CHECK(edge.target < graph.NumberOfNodes());
+            BOOST_CHECK(std::abs(static_cast<int>(to_row(graph.GetID(node))) -
+                                 static_cast<int>(to_row(edge.target))) <= 1);
+            BOOST_CHECK(std::abs(static_cast<int>(to_col(graph.GetID(node))) -
+                                 static_cast<int>(to_col(edge.target))) <= 1);
+        }
+        // itr of node
+        for (auto itr = graph.BeginEdges(node); itr != graph.EndEdges(node); ++itr)
+        {
+            BOOST_CHECK(itr->target < graph.NumberOfNodes());
+            BOOST_CHECK(std::abs(static_cast<int>(to_row(graph.GetID(node))) -
+                                 static_cast<int>(to_row(itr->target))) <= 1);
+            BOOST_CHECK(std::abs(static_cast<int>(to_col(graph.GetID(node))) -
+                                 static_cast<int>(to_col(itr->target))) <= 1);
+        }
+
+        // access via ID of ndoe
+        const auto id = graph.GetID(node);
+        for (const auto &edge : graph.Edges(id))
+        {
+            BOOST_CHECK(edge.target < graph.NumberOfNodes());
+            BOOST_CHECK(std::abs(static_cast<int>(to_row(graph.GetID(node))) -
+                                 static_cast<int>(to_row(edge.target))) <= 1);
+            BOOST_CHECK(std::abs(static_cast<int>(to_col(graph.GetID(node))) -
+                                 static_cast<int>(to_col(edge.target))) <= 1);
+        }
+
+        for (auto itr = graph.BeginEdges(id); itr != graph.EndEdges(id); ++itr)
+        {
+            BOOST_CHECK(itr->target < graph.NumberOfNodes());
+            BOOST_CHECK(std::abs(static_cast<int>(to_row(graph.GetID(node))) -
+                                 static_cast<int>(to_row(itr->target))) <= 1);
+            BOOST_CHECK(std::abs(static_cast<int>(to_col(graph.GetID(node))) -
+                                 static_cast<int>(to_col(itr->target))) <= 1);
+        }
+    }
 }
 
 BOOST_AUTO_TEST_SUITE_END()
